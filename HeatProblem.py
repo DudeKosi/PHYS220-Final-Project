@@ -48,36 +48,104 @@ class HeatProblem:
         self.t = np.arange(0, tmax, dt)
         N = len(self.t)
 
+
         # X Coordinate
         self.xlim = (0, xmax)
         self.x = np.arange(0, xmax, dx)
         M = len(self.x)
+
 
         # Y Coordinate
         self.ylim=(0, ymax)
         self.y = np.arange(0, ymax, dy)
         O = len(self.y)
 
+
         if (len(xboundary) != M or len(yboundary) != O):
-            raise ValueError(f"Boundary Conditions (X, Y)  must be of dimensions ({M} x {O})")
+            raise ValueError(f"Boundary Conditions X and Y  must be of dimensions (1 X {M}) and (1 x {O}) respectively")
         
         # Geometric complexity 
-        self.size = (N, M, O)
+        self.shape = (N, M, O)
 
         # Temperature Boundary Conditions
         self.xboundry = xboundary
         self.yboundry = yboundary
 
-        return self
+        # Gets get in solving method
+        self.solution = None
+
+        return
     
 
 
     def CrankNicolson(self):
         
-        return
+        N, M, O = self.shape
+
+        rx = self.rx
+        sx = 2 * (1 + rx)
+        sx_p = 2 * (1 - rx)
+
+        # N X M Toeplitz matrix, left side matrix
+        left_matrix = self.ConstructToeplitz(N, M, sx, -rx, -rx)
+
+
+        # N X M Toeplitz matrix, right side matrix
+        right_matrix = self.ConstructToeplitz(N, M, sx_p, rx, rx)
+
+        
+        # Initialize N X M matrix, solution matrix
+        U = np.zeros((N, M))
+  
+        # Initialize 1 X M vector, boundary corrective vector
+        corrective_vector = np.zeros(N)
+
+        # XXX Not positive how we define this corrective vector
+        #corrective_vector[0] = rx * 
+        #corrective_vector[-1] = rx
+
+
+        # Loop through all time steps, starting at t=dT
+        for i, t in enumerate(self.t[1::]):
+            
+            # Derived equation takes the form Ax = B
+            # A = Toeplitz matrix w/ s and -r
+            # x = Solution for timeslice k+1, U[k+1]
+            # B = Toeplitz matrix w/ s' and r * U[k] + corrective vector
+
+            # Left side of derived equation
+            A = left_matrix
+            
+            # Right side of derived equation
+            B = np.transpose(np.dot(right_matrix, U[i - 1]) + corrective_vector)
+
+            # solve for X in Ax = B
+            U[i] = np.linalg.solve(A, B)
 
 
 
+        self.solution = U
+
+        return 
+
+
+
+    def ConstructToeplitz(self, N, M, a, b, c):
+
+        matrix = np.zeros((N, M))
+ 
+        i,j = np.indices(matrix.shape)
+
+        # Main diagonal
+        matrix[i==j] = a
+
+        # Upper diagonal
+        matrix[i==j-1] = b
+
+        # Lower diagonal
+        matrix[i==j+1] = c
+
+        return matrix
 
 
 
