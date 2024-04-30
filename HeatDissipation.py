@@ -3,6 +3,18 @@ import numpy as np
 from HeatProblem import HeatProblem
 
 
+def X0_Boundary(x,y,t):
+    return 100
+
+def Y0_Boundary(x,y,t):
+    return 100
+
+def XMax_Boundary(x,y,t):
+    return 0
+
+def YMax_Boundary(x,y,t):
+    return 0
+
 def main():
 
     # 3 second solution
@@ -25,11 +37,10 @@ def main():
     ymax_boundary = np.zeros(int(ymax/dy))
 
     # Construct HeatProblem object using parameters
-    sample = HeatProblem(tmax, xmax, ymax, x0_boundary, y0_boundary, xmax_boundary, ymax_boundary, dt, dx, dy)
+    sample = HeatProblem(tmax, xmax, ymax, X0_Boundary, Y0_Boundary, XMax_Boundary, YMax_Boundary, dt, dx, dy)
 
     # Solve using Crank-Nicolson Finite differentiation
     sample.CrankNicolson()   
-
     
     plt.figure()
 
