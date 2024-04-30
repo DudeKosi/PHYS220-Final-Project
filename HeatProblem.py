@@ -9,8 +9,10 @@ class HeatProblem:
     :param xmax (float): Max x index
     :param ymax (float): Max y index
 
-    :param xboundary (np.array): Boundary value at each x val
-    :param yboundary (np.array): Boundary value at each y val
+    :param x0_boundary (np.array): Boundary value at each (x0, y) val
+    :param y0_boundary (np.array): Boundary value at each (x, y0) val
+    :param xmax_boundary (np.array): Boundary value at each (xmax, y) val
+    :param ymax_boundary (np.array): Boundary value at each (x, ymax) val
 
     :param dt (float): Timestep, computational accuracy
     :param dx (float): X step, computational accuracy
@@ -20,7 +22,8 @@ class HeatProblem:
     :return (HeatProblem): HeatProblem object
     """
     def __init__(self, tmax, xmax, ymax,
-                        xboundary, yboundary,
+                        x0_boundary, y0_boundary,
+                        xmax_boundary, ymax_boundary,
                         dt=1e-2, dx=1e-2, dy=1e-2):
         
         self.rx = (dt) / (dx ** 2)
@@ -31,12 +34,15 @@ class HeatProblem:
         assert(self.ry > 0)
 
         # Type check for boundary conditions
-        if (type(xboundary) != np.array or type(yboundary) != np.array):
+        if (type(x0_boundary) != np.array or type(y0_boundary) != np.array
+            or type(xmax_boundary) != np.array or type(ymax_boundary) != np.array):
 
             # Attempt type coercion
             try:
-                xboundary = np.array(xboundary)
-                yboundary = np.array(yboundary)
+                x0_boundary = np.array(x0_boundary)
+                y0_boundary = np.array(y0_boundary)
+                xmax_boundary = np.array(xmax_boundary)
+                ymax_boundary = np.array(ymax_boundary)
             except:
                 raise ValueError("Boundary  conditions must be of type np.array")
         
@@ -61,15 +67,21 @@ class HeatProblem:
         O = len(self.y)
 
 
-        if (len(xboundary) != M or len(yboundary) != O):
-            raise ValueError(f"Boundary Conditions X and Y  must be of dimensions (1 X {M}) and (1 x {O}) respectively")
+        if (len(x0_boundary) != M or len(xmax_boundary) != M):
+            raise ValueError(f"Boundary Conditions for X must be of dimensions (1 X {M})")
+        
+        if (len(y0_boundary) != O or len(ymax_boundary) != O):
+             raise ValueError(f"Boundary Conditions for Y must be of dimensions (1 X {N})")
         
         # Geometric complexity 
         self.shape = (N, M, O)
 
         # Temperature Boundary Conditions
-        self.xboundry = xboundary
-        self.yboundry = yboundary
+        self.x0_boundary = x0_boundary
+        self.xmax_boundary = xmax_boundary
+
+        self.y0_boundary = y0_boundary
+        self.ymax_boundary = ymax_boundary
 
         # Gets get in solving method
         self.solution = None
@@ -77,7 +89,13 @@ class HeatProblem:
         return
     
 
+    """
+    Iterates through time solving the Crank-Nicolson linear equation for the solution 
+    vector/matrix at each timeslice.
 
+    :params NONE
+    :returns NONE
+    """
     def CrankNicolson(self):
         
         N, M, O = self.shape
@@ -101,8 +119,8 @@ class HeatProblem:
         corrective_vector = np.zeros(N)
 
         # XXX Not positive how we define this corrective vector
-        #corrective_vector[0] = rx * 
-        #corrective_vector[-1] = rx
+        corrective_vector[0] = rx * self.x0_boundary[0]
+        corrective_vector[-1] = rx * self.xmax_boundary[0]
 
 
         # Loop through all time steps, starting at t=dT
@@ -123,13 +141,24 @@ class HeatProblem:
             U[i] = np.linalg.solve(A, B)
 
 
-
         self.solution = U
 
         return 
 
 
+    """
+    Constructs a Toeplitz-style matrix where only the 
+    main diagonal, k+1 diagonal and k-1 diagonal are non-zero
+    
+    :params N (int): Number of Rows
+    :params M (int): Number of Columns
 
+    :params a (int): Value along main diagonal
+    :params b (int): Value along the upper diagonal, k+1
+    :params c (int): Value along the lower diagonal, k-1
+
+    :returns matrix (np.array): Toeplitz-style matrix with specified params
+    """
     def ConstructToeplitz(self, N, M, a, b, c):
 
         matrix = np.zeros((N, M))

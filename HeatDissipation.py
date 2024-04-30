@@ -17,12 +17,15 @@ def main():
     dx = 1e-2
     dy = 1e-2
 
-    # Boundary conditions are zero
-    xboundary = np.zeros(int(xmax/dx))
-    yboundary = np.zeros(int(ymax/dy))
+    # Boundary conditions
+    x0_boundary = 100 * np.ones(int(xmax/dx))
+    y0_boundary = 100 * np.ones(int(ymax/dy))
+
+    xmax_boundary = np.zeros(int(xmax/dx))
+    ymax_boundary = np.zeros(int(ymax/dy))
 
     # Construct HeatProblem object using parameters
-    sample = HeatProblem(tmax, xmax, ymax, xboundary, yboundary, dt, dx, dy)
+    sample = HeatProblem(tmax, xmax, ymax, x0_boundary, y0_boundary, xmax_boundary, ymax_boundary, dt, dx, dy)
 
     # Solve using Crank-Nicolson Finite differentiation
     sample.CrankNicolson()   
@@ -30,7 +33,7 @@ def main():
     
     plt.figure()
 
-    plt.pcolormesh(sample.x, sample.t, sample.solution, cmap="viridis")
+    plt.pcolormesh(sample.x, sample.t, sample.solution, cmap="viridis", shading='auto')
 
     plt.title("Sample Solution")
     plt.xlabel("X, in Meters")
