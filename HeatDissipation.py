@@ -33,7 +33,7 @@ def main():
     
     plt.figure()
 
-    plt.pcolormesh(sample.x, sample.t, sample.solution, cmap="viridis", shading='auto')
+    plt.pcolormesh(sample.x, sample.t, sample.solution, cmap="viridis", shading='auto', vmin=0, vmax=100)
 
     plt.title("Sample Solution")
     plt.xlabel("X, in Meters")
