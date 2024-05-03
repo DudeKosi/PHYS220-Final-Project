@@ -90,45 +90,70 @@ class HeatProblem:
         sx = 2 * (1 + rx)
         sx_p = 2 * (1 - rx)
 
+        ry = self.ry
+        sy = 2 * (1 + ry)
+        sy_p = 2 * (1 - ry)
+
         # N X M Toeplitz matrix, left side matrix
-        left_matrix = self.ConstructToeplitz(N, M, sx, -rx, -rx)
+        left_matrix_x = self.ConstructToeplitz(N, M, sx, -rx, -rx)
+        left_matrix_y = self.ConstructToeplitz(N, O, sy, -ry, -ry)
 
 
         # N X M Toeplitz matrix, right side matrix
-        right_matrix = self.ConstructToeplitz(N, M, sx_p, rx, rx)
+        right_matrix_x = self.ConstructToeplitz(N, M, sx_p, rx, rx)
+        right_matrix_y = self.ConstructToeplitz(N, O, sy_p, ry, ry)
 
         
-        # Initialize N X M matrix, solution matrix
-        U = np.zeros((N, M))
+        # Initialize N X M X O matrix, solution matrix 
+        U = np.zeros((N, M, O))
+        Ux = np.zeros((N, M))
+        Uy = np.zeros((N, O))
   
-        # Initialize 1 X M vector, boundary corrective vector
-        corrective_vector = np.zeros(N)
+        # Initialize 1 X M vector, boundary corrective vector for x
+        corrective_vector_x = np.zeros(N)
+
+        # Initialize 1 X O vector, boundary corrective vector for y
+        corrective_vector_y = np.zeros(O)
 
 
         # Loop through all time steps, starting at t=dT
         for i, t in enumerate(self.t[1::]):
 
             # XXX Not positive how we define this corrective vector
-            corrective_vector[0] = rx * self.x0_boundary(self.xlim[0], 0, t) + rx * self.x0_boundary(self.xlim[0], 0, self.t[i+1])
-            corrective_vector[-1] = rx * self.xmax_boundary(self.xlim[1], 0, t) + rx * self.xmax_boundary(self.xlim[1], 0, self.t[i+1])
+            corrective_vector_x[0] = rx * self.x0_boundary(self.xlim[0], 0, t) + rx * self.x0_boundary(self.xlim[0], 0, self.t[i+1])
+            corrective_vector_x[-1] = rx * self.xmax_boundary(self.xlim[1], 0, t) + rx * self.xmax_boundary(self.xlim[1], 0, self.t[i+1])
+
+            corrective_vector_y[0] = ry * self.y0_boundary(0, self.ylim[0], t) + ry * self.y0_boundary(0, self.ylim[0], self.t[i+1])
+            corrective_vector_y[-1] = ry * self.ymax_boundary(0, self.ylim[1], t) + ry * self.ymax_boundary(0, self.ylim[1], self.t[i+1])
             
             # Derived equation takes the form Ax = B
             # A = Toeplitz matrix w/ s and -r
             # x = Solution for timeslice k+1, U[k+1]
             # B = Toeplitz matrix w/ s' and r * U[k] + corrective vector
 
-            # Left side of derived equation
-            A = left_matrix
+            # Left side of derived equation, x dim
+            Ax = left_matrix_x
             
-            # Right side of derived equation
-            B = np.transpose(np.dot(right_matrix, U[i - 1]) + corrective_vector)
+            # Right side of derived equation, x dim
+            Bx = np.transpose(np.dot(right_matrix_x, Ux[i - 1]) + corrective_vector_x)
 
             # solve for X in Ax = B
-            U[i] = np.linalg.solve(A, B)
+            Ux[i] = np.linalg.solve(Ax, Bx)
 
+
+            Ay = left_matrix_y
+            By = np.transpose(np.dot(right_matrix_y, Uy[i - 1]) + corrective_vector_y)
+            Uy[i] = np.linalg.solve(Ay, By)
+
+            # XXX Perhaps a more Pythonic approach exists 
+            # Turn a 1xM and 1xO vector into MxO matrix using additon
+            for j in range(M):
+               for k in range(O):
+                    U[i, j, k] = Ux[i, j] + Uy[i, k]
+            #x, y = np.meshgrid(Ux[i], Uy[i])
+            #U[i] = x + y
 
         self.solution = U
-
         return 
 
 
