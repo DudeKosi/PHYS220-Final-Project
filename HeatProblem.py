@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 class HeatProblem:
 
@@ -28,12 +29,6 @@ class HeatProblem:
                         initial_conditions=None,
                         dt=1e-2, dx=1e-2, dy=1e-2):
         
-        self.rx = (dt) / (dx ** 2)
-        self.ry = (dt) / (dy ** 2)
-
-        #Unconditional Stability for Crank-Nicolson
-        assert(self.rx > 0)
-        assert(self.ry > 0)
 
         # Type check for boundary conditions, using DeMorgans
         if not(callable(x0_boundary) or callable(y0_boundary) or
@@ -83,20 +78,20 @@ class HeatProblem:
                 raise ValueError(f"Initial condition must be an ({M}, {O}) np.array")
         
             self.initial_conditions = initial_conditions
+
         
         # Lets create some initial conditions for the user using X, Y boundaries and 0
         else:
             initial_conditions = np.zeros((M, N))
 
-            
             for i, y in enumerate(self.y):
                 
                 initial_conditions[0, i] = x0_boundary(0, y, 0)
                 initial_conditions[-1, i] = xmax_boundary(self.x[-1], y, 0)
 
-            for i, x in enumerate(self.x):
-                initial_conditions[i, 0] = y0_boundary(x, 0, 0)
-                initial_conditions[i, -1] = ymax_boundary(x, self.y[-1], 0)
+            for j, x in enumerate(self.x):
+                initial_conditions[j, 0] = y0_boundary(x, 0, 0)
+                initial_conditions[j, -1] = ymax_boundary(x, self.y[-1], 0)
 
             self.initial_conditions = initial_conditions
 
@@ -118,50 +113,48 @@ class HeatProblem:
         
         N, M, O = self.shape
 
-        rx = self.rx
-        sx = 2 * (1 + rx)
-        sx_p = 2 * (1 - rx)
+        r_gamma = ((self.dt) / (self.dx **2)) + ((self.dt) / (self.dy ** 2))
+        s_gamma = 1 + 2 * r_gamma
+        s_gamma_prime = 2 * (1 - r_gamma)
 
-        ry = self.ry
-        sy = 2 * (1 + ry)
-        sy_p = 2 * (1 - ry)
+        # M X O Toeplitz matrix, left side matrix
+        left_matrix = self.ConstructToeplitz(M, O, s_gamma, -r_gamma, -r_gamma)
 
-        # N X M Toeplitz matrix, left side matrix
-        left_matrix_x = self.ConstructToeplitz(N, M, sx, -rx, -rx)
-        left_matrix_y = self.ConstructToeplitz(N, O, sy, -ry, -ry)
-
-
-        # N X M Toeplitz matrix, right side matrix
-        right_matrix_x = self.ConstructToeplitz(N, M, sx_p, rx, rx)
-        right_matrix_y = self.ConstructToeplitz(N, O, sy_p, ry, ry)
+        # M X O Toeplitz matrix, right side matrix
+        right_matrix = self.ConstructToeplitz(M, O, s_gamma_prime, r_gamma, r_gamma) 
 
         
-        # Initialize N X M X O matrix, solution matrix 
+        # Initialize N X M X O matrix, solution matrix
         U = np.zeros((N, M, O))
-        Ux = np.zeros((N, M))
-        Uy = np.zeros((N, O))
-  
-        # Initialize 1 X M vector, boundary corrective vector for x
-        corrective_vector_x = np.zeros(N)
 
-        # Initialize 1 X O vector, boundary corrective vector for y
-        corrective_vector_y = np.zeros(O)
-
-        #U[0, :, :] = self.initial_conditions
-        
-        #Ux[0] = U[0, :, 0]
-        #Uy[0] = U[0, 0, :]
+        U[0, :, :] = self.initial_conditions
+      
+        plt.figure()
+        plt.pcolormesh(self.x, self.y, self.initial_conditions, cmap='viridis', shading='auto', vmin=0, vmax=100)
+        plt.colorbar()
+        plt.savefig("InitialConditions.png", dpi=300)
 
         # Loop through all time steps, starting at t=dT
-        for i, t in enumerate(self.t[1::], 1):
+        for i, t in enumerate(self.t[1:], start=1):
 
-            # XXX Not positive how we define this corrective vector
-            corrective_vector_x[0] = rx * self.x0_boundary(self.xlim[0], 0, t) + rx * self.x0_boundary(self.xlim[0], 0, self.t[i]+self.dt)
-            corrective_vector_x[-1] = rx * self.xmax_boundary(self.xlim[1], 0, t) + rx * self.xmax_boundary(self.xlim[1], 0, self.t[i]+self.dt)
+            boundary_conditions = np.zeros((M, O))
 
-            corrective_vector_y[0] = ry * self.y0_boundary(0, self.ylim[0], t) + ry * self.y0_boundary(0, self.ylim[0], self.t[i]+self.dt)
-            corrective_vector_y[-1] = ry * self.ymax_boundary(0, self.ylim[1], t) + ry * self.ymax_boundary(0, self.ylim[1], self.t[i]+self.dt)
+            for j, y in enumerate(self.y):
+                boundary_conditions[0, j] = (r_gamma) * (self.x0_boundary(self.xlim[0], y, t) + self.x0_boundary(self.xlim[0], y, t + self.dt))
+                boundary_conditions[-1, j] = (r_gamma) * (self.xmax_boundary(self.xlim[1], y, t) + self.xmax_boundary(self.xlim[1], y, t + self.dt))
             
+            for k, x in enumerate(self.x):
+                boundary_conditions[k, 0] = (r_gamma) * ( self.y0_boundary(x, self.ylim[0], t) + self.y0_boundary(x, self.ylim[0], t + self.dt) )
+                boundary_conditions[k, -1] = (r_gamma) * ( self.ymax_boundary(x, self.ylim[1], t) + self.ymax_boundary(x, self.ylim[1], t + self.dt) )
+            
+            
+            # Display the boundary condition matrix
+            if (i == 1):    
+                plt.figure()
+                plt.pcolormesh(self.x, self.y, boundary_conditions)
+                plt.savefig("BoundaryConditions.png", dpi=300)
+            
+
             # Derived equation takes the form Ax = B
             # A = Toeplitz matrix w/ s and -r
             # x = Solution for timeslice k+1, U[k+1]
@@ -169,24 +162,13 @@ class HeatProblem:
 
             # Left side of derived equation, x dim
             
-            Ax = left_matrix_x
+            A = left_matrix
             
             # Right side of derived equation, x dim
-            Bx = np.transpose(np.dot(right_matrix_x, Ux[i - 1]) + corrective_vector_x)
+            B = np.transpose(np.dot(right_matrix, U[i - 1]) + boundary_conditions)
 
             # solve for X in Ax = B
-            Ux[i] = np.linalg.solve(Ax, Bx)
-
-
-            Ay = left_matrix_y
-            By = np.transpose(np.dot(right_matrix_y, Uy[i - 1]) + corrective_vector_y)
-            Uy[i] = np.linalg.solve(Ay, By)
-
-            # XXX Perhaps a more Pythonic approach exists 
-            # Turn a 1xM and 1xO vector into MxO matrix using additon
-            for j in range(M):
-               for k in range(O):
-                    U[i, j, k] = Ux[i, j] + Uy[i, k]
+            U[i] = np.linalg.solve(A, B)
 
 
         self.solution = U

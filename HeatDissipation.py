@@ -6,10 +6,12 @@ from matplotlib.animation import FuncAnimation
 
 
 def X0_Boundary(x,y,t):
-    return 50  
+    if (y !=0 ):
+        return 100
+    return 0  
 
 def Y0_Boundary(x,y,t):
-    return 50
+    return 100
 
 def XMax_Boundary(x,y,t):
     return 0
@@ -36,7 +38,8 @@ def main():
 
 
     # Setup some initial conditions, all points at 100 degrees at start
-    initial_conditions = 100 * np.ones((M, O))
+    initial_conditions = 50 * np.ones((M, O))
+
 
     # Construct HeatProblem object using parameters
     sample = HeatProblem(tmax, xmax, ymax, X0_Boundary, Y0_Boundary, XMax_Boundary, YMax_Boundary, initial_conditions=initial_conditions, dt=dt, dx=dx, dy=dy)
@@ -52,13 +55,16 @@ def main():
 
     frame_interval = 100
     slice = 0
-    frame_plot = ax.pcolormesh(sample.x, sample.y, U[slice, :, :], cmap='viridis', shading='auto', vmin=0, vmax=100)
+    frame_plot = ax.pcolormesh(sample.x, sample.y, U[slice, :, :])
 
     ax.set_title("2 Dimensional Heat Equation")
 
     ax.set_xlabel("X, in Meters")
     ax.set_ylabel("Y, in Meters")
     fig.colorbar(frame_plot, ax=ax)
+    #ax.set_xlim((0.1, 2.9))
+    #ax.set_ylim((0.1, 2.9))
+
 
     time = fig.text(0.05,0.05, "Time: 0", ha="left", va="top")
     
