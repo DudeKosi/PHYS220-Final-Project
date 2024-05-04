@@ -31,9 +31,15 @@ def main():
     dx = 1e-2
     dy = 1e-2
 
+    # Shape of resulting solution, N x M x O
+    N, M, O = int(tmax / dt), int(xmax / dx), int(ymax / dy)
+
+
+    # Setup some initial conditions, all points at 100 degrees at start
+    initial_conditions = 100 * np.ones((M, O))
 
     # Construct HeatProblem object using parameters
-    sample = HeatProblem(tmax, xmax, ymax, X0_Boundary, Y0_Boundary, XMax_Boundary, YMax_Boundary, dt, dx, dy)
+    sample = HeatProblem(tmax, xmax, ymax, X0_Boundary, Y0_Boundary, XMax_Boundary, YMax_Boundary, initial_conditions=initial_conditions, dt=dt, dx=dx, dy=dy)
 
     # Solve using Crank-Nicolson Finite differentiation
     sample.CrankNicolson()   

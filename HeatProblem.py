@@ -14,16 +14,18 @@ class HeatProblem:
     :param xmax_boundary (function ptr): Boundary value at each (xmax, y) val
     :param ymax_boundary (function ptr): Boundary value at each (x, ymax) val
 
+    :param initial_conditions (np.array): Initial temperature at t=0
+
     :param dt (float): Timestep, computational accuracy
     :param dx (float): X step, computational accuracy
     :param dy (float): Y step, computational accuracy
-
-
+    
     :return (HeatProblem): HeatProblem object
     """
     def __init__(self, tmax, xmax, ymax,
                         x0_boundary, y0_boundary,
                         xmax_boundary, ymax_boundary,
+                        initial_conditions=None,
                         dt=1e-2, dx=1e-2, dy=1e-2):
         
         self.rx = (dt) / (dx ** 2)
@@ -61,7 +63,7 @@ class HeatProblem:
         
         # Geometric complexity 
         self.shape = (N, M, O)
-
+        
         # Temperature Boundary Conditions
         self.x0_boundary = x0_boundary
         self.xmax_boundary = xmax_boundary
@@ -69,7 +71,37 @@ class HeatProblem:
         self.y0_boundary = y0_boundary
         self.ymax_boundary = ymax_boundary
 
-        # Gets get in solving method
+        self.dt = dt
+        self.dx = dx
+        self.dy = dy
+
+        # Check if initial conditions
+        if (initial_conditions is not None):
+
+            # Typecheck for initial conditions
+            if (not isinstance(initial_conditions, np.ndarray) or initial_conditions.shape != (M, O)):
+                raise ValueError(f"Initial condition must be an ({M}, {O}) np.array")
+        
+            self.initial_conditions = initial_conditions
+        
+        # Lets create some initial conditions for the user using X, Y boundaries and 0
+        else:
+            initial_conditions = np.zeros((M, N))
+
+            
+            for i, y in enumerate(self.y):
+                
+                initial_conditions[0, i] = x0_boundary(0, y, 0)
+                initial_conditions[-1, i] = xmax_boundary(self.x[-1], y, 0)
+
+            for i, x in enumerate(self.x):
+                initial_conditions[i, 0] = y0_boundary(x, 0, 0)
+                initial_conditions[i, -1] = ymax_boundary(x, self.y[-1], 0)
+
+            self.initial_conditions = initial_conditions
+
+
+        # Gets set in solving method
         self.solution = None
 
         return
@@ -115,16 +147,20 @@ class HeatProblem:
         # Initialize 1 X O vector, boundary corrective vector for y
         corrective_vector_y = np.zeros(O)
 
+        #U[0, :, :] = self.initial_conditions
+        
+        #Ux[0] = U[0, :, 0]
+        #Uy[0] = U[0, 0, :]
 
         # Loop through all time steps, starting at t=dT
-        for i, t in enumerate(self.t[1::]):
+        for i, t in enumerate(self.t[1::], 1):
 
             # XXX Not positive how we define this corrective vector
-            corrective_vector_x[0] = rx * self.x0_boundary(self.xlim[0], 0, t) + rx * self.x0_boundary(self.xlim[0], 0, self.t[i+1])
-            corrective_vector_x[-1] = rx * self.xmax_boundary(self.xlim[1], 0, t) + rx * self.xmax_boundary(self.xlim[1], 0, self.t[i+1])
+            corrective_vector_x[0] = rx * self.x0_boundary(self.xlim[0], 0, t) + rx * self.x0_boundary(self.xlim[0], 0, self.t[i]+self.dt)
+            corrective_vector_x[-1] = rx * self.xmax_boundary(self.xlim[1], 0, t) + rx * self.xmax_boundary(self.xlim[1], 0, self.t[i]+self.dt)
 
-            corrective_vector_y[0] = ry * self.y0_boundary(0, self.ylim[0], t) + ry * self.y0_boundary(0, self.ylim[0], self.t[i+1])
-            corrective_vector_y[-1] = ry * self.ymax_boundary(0, self.ylim[1], t) + ry * self.ymax_boundary(0, self.ylim[1], self.t[i+1])
+            corrective_vector_y[0] = ry * self.y0_boundary(0, self.ylim[0], t) + ry * self.y0_boundary(0, self.ylim[0], self.t[i]+self.dt)
+            corrective_vector_y[-1] = ry * self.ymax_boundary(0, self.ylim[1], t) + ry * self.ymax_boundary(0, self.ylim[1], self.t[i]+self.dt)
             
             # Derived equation takes the form Ax = B
             # A = Toeplitz matrix w/ s and -r
@@ -132,6 +168,7 @@ class HeatProblem:
             # B = Toeplitz matrix w/ s' and r * U[k] + corrective vector
 
             # Left side of derived equation, x dim
+            
             Ax = left_matrix_x
             
             # Right side of derived equation, x dim
@@ -150,8 +187,7 @@ class HeatProblem:
             for j in range(M):
                for k in range(O):
                     U[i, j, k] = Ux[i, j] + Uy[i, k]
-            #x, y = np.meshgrid(Ux[i], Uy[i])
-            #U[i] = x + y
+
 
         self.solution = U
         return 
