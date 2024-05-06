@@ -195,7 +195,7 @@ class HeatProblemRadial:
                     initial_conditions=None,
                     dt=1e-2, dr=1e-2):
         
-
+        dt = dt / 2
         # Type check for boundary conditions, using DeMorgans
         if not(callable(center_boundary) or callable(edge_boundary)):
             raise ValueError("Boundaries must be a function of type f(t)")
@@ -243,7 +243,7 @@ class HeatProblemRadial:
         
         # Lets create some initial conditions for the user using X, Y boundaries and 0
         else:
-            initial_conditions = np.zeros((M, N))
+            initial_conditions = np.zeros((M, O))
 
         
         # M x N (square) matrix where 1 if element in that index is in the center
@@ -256,17 +256,19 @@ class HeatProblemRadial:
         else:
             self.center[M // 2,  M // 2] = 1
 
+
         # Apply center condition
-        initial_conditions[np.where(self.center)] = center_boundary(0)
+        initial_conditions[np.where(self.center)] = center_boundary(0, 0)
 
         # Apply edge condition to outside edge
-        initial_conditions[0, :] = edge_boundary(rmax, 0)
-        initial_conditions[-1, :] = edge_boundary(rmax, 0)
-        initial_conditions[:, 0] = edge_boundary(rmax, 0)
-        initial_conditions[:, -1] = edge_boundary(rmax, 0)
+        initial_conditions[0, :] = edge_boundary(rmax, 0, 0)
+        initial_conditions[-1, :] = edge_boundary(rmax, 0, 0)
+        initial_conditions[:, 0] = edge_boundary(rmax, 0, 0)
+        initial_conditions[:, -1] = edge_boundary(rmax, 0, 0)
 
         self.initial_conditions = initial_conditions
 
+        
 
         # Gets set in solving method
         self.solution = None
@@ -307,21 +309,20 @@ class HeatProblemRadial:
         plt.savefig("InitialConditions.png", dpi=300)
 
         
-
         # Loop through all time steps, starting at t=dT
         for i, t in enumerate(self.t[1:], start=1):
 
             boundary_conditions = np.zeros((M, O))
 
-
             # Apply edge condition to outside edge
-            boundary_conditions[0, :] = self.edge_boundary(self.rmax, t) + self.edge_boundary(self.rmax, t + self.dt)
-            boundary_conditions[-1, :] = self.edge_boundary(self.rmax, t) + self.edge_boundary(self.rmax, t + self.dt)
-            boundary_conditions[:, 0] = self.edge_boundary(self.rmax, t) + self.edge_boundary(self.rmax, t + self.dt)
-            boundary_conditions[:, -1] = self.edge_boundary(self.rmax, t) + self.edge_boundary(self.rmax, t + self.dt)
+            boundary_conditions[0, :] = self.edge_boundary(self.rmax, t, i) + self.edge_boundary(self.rmax, t + self.dt, i)
+            boundary_conditions[-1, :] = self.edge_boundary(self.rmax, t, i) + self.edge_boundary(self.rmax, t + self.dt, i)
+            boundary_conditions[:, 0] = self.edge_boundary(self.rmax, t, i) + self.edge_boundary(self.rmax, t + self.dt, i)
+            boundary_conditions[:, -1] = self.edge_boundary(self.rmax, t, i) + self.edge_boundary(self.rmax, t + self.dt, i)
 
             # Apply center boundary condition
-            boundary_conditions[np.where(self.center)] = self.center_boundary(t) + self.center_boundary(t + self.dt)
+
+            boundary_conditions[np.where(self.center)] = self.center_boundary(t, i, U[i - 1, :, :]) + self.center_boundary(t + self.dt, i, U[i - 1, :, :])
                      
 
             # Derived equation takes the form Ax = B
@@ -339,8 +340,8 @@ class HeatProblemRadial:
             # solve for X in Ax = B
             U[i, :, :] = np.linalg.solve(A, B)
 
-
-        self.solution = U
+        self.t = self.t[0::2]
+        self.solution = U[0::2, :, :]
         return
 
 
