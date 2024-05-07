@@ -59,7 +59,7 @@ def BoostClockProblem():
     U = CPU.solution
 
     animation_runtime = 30
-    frame_rate = len(t) / animation_runtime
+    frame_rate = len(t)/10 / animation_runtime
     slice = 0
     frame_plot = ax.pcolormesh(CPU.x, CPU.y, U[slice, :, :], cmap='viridis', shading='auto', vmin=0, vmax = 120)
 
@@ -74,12 +74,12 @@ def BoostClockProblem():
     
     def FrameUpdate(frame):
         nonlocal slice
-        slice = frame
+        slice = 10 * frame
         frame_plot.set_array(U[slice, :, :])
         time.set_text("Time: {:.2f}".format(t[slice]))
         
     
-    anim = FuncAnimation(fig, FrameUpdate, frames=len(t), interval=1000/frame_rate)
+    anim = FuncAnimation(fig, FrameUpdate, frames=int(len(t)/10), interval=1000/frame_rate)
 
     anim.save('CPU Boost Cycling.gif', writer='ffmpeg')
 
