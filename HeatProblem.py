@@ -1,7 +1,152 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-class HeatProblemLinear:
+
+class HeatProblem1DLinear:
+
+    """
+    HeatProblem Constructor
+
+    :param tmax (float): Max time index
+    :param xmax (float): Max x index
+    :param ymax (float): Max y index
+
+    :param x0_boundary (function ptr): Boundary value at each (x0, y) val
+    :param xmax_boundary (function ptr): Boundary value at each (xmax, y) val
+
+    :param initial_conditions (np.array): Initial temperature at t=0
+
+    :param dt (float): Timestep, computational accuracy
+    :param dx (float): X step, computational accuracy
+    :param dy (float): Y step, computational accuracy
+    
+    :return (HeatProblem): HeatProblem object
+    """
+    def __init__(self, tmax, xmax,
+                        x0_boundary, xmax_boundary,
+                        initial_conditions=None,
+                        dt=1e-2, dx=1e-2):
+        
+
+        # Type check for boundary conditions, using DeMorgans
+        if not(callable(x0_boundary) or callable(xmax_boundary)):
+
+            raise ValueError("Boundaries must be a function of type f(x, t)")
+
+        # 3 Dimensional Solution Framework
+
+        # Time
+        self.t_lim = (0, tmax)
+        self.t = np.arange(0, tmax, dt)
+        N = len(self.t)
+
+
+        # X Coordinate
+        self.xlim = (0, xmax)
+        self.x = np.arange(0, xmax, dx)
+        M = len(self.x)
+
+        
+        # Geometric complexity 
+        self.shape = (N, M)
+        
+        # Temperature Boundary Conditions
+        self.x0_boundary = x0_boundary
+        self.xmax_boundary = xmax_boundary
+
+        self.dt = dt
+        self.dx = dx
+
+        # Check if initial conditions
+        if (initial_conditions is not None):
+
+            # Typecheck for initial conditions
+            if (not isinstance(initial_conditions, np.ndarray) or initial_conditions.shape != (M)):
+                raise ValueError(f"Initial condition must be an ({M}) np.array")
+        
+        else:
+            initial_conditions = np.zeros((M))
+
+        # Apply Boundary Conditions to Initial Conditions for greater continuity
+                
+        initial_conditions[0] = x0_boundary(0, 0)
+        initial_conditions[-1] = xmax_boundary(self.x[-1], 0)
+
+
+        self.initial_conditions = initial_conditions
+
+
+        # Gets set in solving method
+        self.solution = None
+
+        return
+    
+
+    """
+    Iterates through time solving the Crank-Nicolson linear equation for the solution 
+    vector/matrix at each timeslice.
+
+    :params NONE
+    :returns NONE
+    """
+    def CrankNicolson(self):
+        
+        N, M = self.shape
+
+        r_gamma = ((self.dt) / (self.dx **2))
+        s_gamma = 2 * (1 + r_gamma)
+        s_gamma_prime = 2 * (1 - r_gamma)
+
+        # M X O Toeplitz matrix, left side matrix
+        left_matrix = ConstructToeplitz(M, M, s_gamma, -r_gamma, -r_gamma)
+
+        # M X O Toeplitz matrix, right side matrix
+        right_matrix = ConstructToeplitz(M, M, s_gamma_prime, r_gamma, r_gamma) 
+
+        
+        # Initialize N X M X O matrix, solution matrix
+        U = np.zeros((N, M))
+
+        U[0, :] = self.initial_conditions
+
+        """
+        plt.figure()
+        plt.pcolormesh(self.x, self.y, self.initial_conditions, cmap='viridis', shading='auto')
+        plt.colorbar()
+        plt.savefig("InitialConditions.png", dpi=300)
+        """
+        
+
+        # Loop through all time steps, starting at t=dT
+        for i, t in enumerate(self.t[1::], start=1):
+
+            boundary_conditions = np.zeros(M)
+            boundary_conditions[0] = (self.x0_boundary(self.xlim[0], t) + self.x0_boundary(self.xlim[0], t + self.dt))
+            boundary_conditions[-1] = (self.xmax_boundary(self.xlim[1], t) + self.xmax_boundary(self.xlim[1], t + self.dt))
+                            
+
+            # Derived equation takes the form Ax = B
+            # A = Toeplitz matrix w/ s and -r
+            # x = Solution for timeslice k+1, U[k+1]
+            # B = Toeplitz matrix w/ s' and r * U[k] + corrective vector
+
+            # Left side of derived equation, x dim
+            
+            A = left_matrix
+            
+            # Right side of derived equation, x dim
+            B = np.transpose(np.dot(right_matrix, U[i - 1]) + (r_gamma) * boundary_conditions)
+
+
+            # solve for X in Ax = B
+            U[i, :] = np.linalg.solve(A, B)
+
+
+        self.solution = U
+        return 
+
+
+class HeatProblem2DLinear:
 
     """
     HeatProblem Constructor
@@ -171,7 +316,7 @@ class HeatProblemLinear:
 
 
 
-class HeatProblemRadial:
+class HeatProblem2DRadial:
 
     """
     HeatProblem Constructor
@@ -340,8 +485,10 @@ class HeatProblemRadial:
             # solve for X in Ax = B
             U[i, :, :] = np.linalg.solve(A, B)
 
-        self.t = self.t[0::2]
-        self.solution = U[0::2, :, :]
+        #self.t = self.t[0::2]
+        #self.solution = U[0::2, :, :]
+
+        self.solution = U
         return
 
 
