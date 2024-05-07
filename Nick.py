@@ -8,10 +8,10 @@ ambient_temperature = 21 # 21 Celcius
 
 
 #Intel Alder Lake Specifications
-CPU_dimensions = 45 #Meters
+CPU_dimensions = 45 #MMeters
 
-CPU_min_boost = 2.5 # 2.5 GHz clock rate
-CPU_max_boost = 5 # 5 GHz boost clock rate
+CPU_min_boost = 3.2 # 3.2 GHz clock rate
+CPU_max_boost = 5.2 # 5.2 GHz boost clock rate
 
 CPU_boost_amplitude = CPU_max_boost - CPU_min_boost
 

@@ -270,13 +270,7 @@ class HeatProblem2DLinear:
         U = np.zeros((N, M, O))
 
         U[0, :, :] = self.initial_conditions
-      
-        plt.figure()
-        plt.pcolormesh(self.x, self.y, self.initial_conditions, cmap='viridis', shading='auto')
-        plt.colorbar()
-        plt.savefig("InitialConditions.png", dpi=300)
-
-        
+              
 
         # Loop through all time steps, starting at t=dT
         for i, t in enumerate(self.t[1:], start=1):
@@ -289,8 +283,7 @@ class HeatProblem2DLinear:
             for k, x in enumerate(self.x):
                 boundary_conditions[k, 0] = (self.y0_boundary(x, self.ylim[0], t) + self.y0_boundary(x, self.ylim[0], t + self.dt) )
                 boundary_conditions[k, -1] = (self.ymax_boundary(x, self.ylim[1], t) + self.ymax_boundary(x, self.ylim[1], t + self.dt) )
-            
-                      
+              
 
             # Derived equation takes the form Ax = B
             # A = Toeplitz matrix w/ s and -r
@@ -447,13 +440,7 @@ class HeatProblem2DRadial:
         U = np.zeros((N, M, O))
 
         U[0, :, :] = self.initial_conditions
-      
-        plt.figure()
-        plt.pcolormesh(self.x, self.y, self.initial_conditions, cmap='viridis', shading='auto')
-        plt.colorbar()
-        plt.savefig("InitialConditions.png", dpi=300)
-
-        
+              
         # Loop through all time steps, starting at t=dT
         for i, t in enumerate(self.t[1:], start=1):
 
@@ -485,8 +472,6 @@ class HeatProblem2DRadial:
             # solve for X in Ax = B
             U[i, :, :] = np.linalg.solve(A, B)
 
-        #self.t = self.t[0::2]
-        #self.solution = U[0::2, :, :]
 
         self.solution = U
         return
