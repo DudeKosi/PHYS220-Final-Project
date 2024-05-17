@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from HeatProblem import HeatProblem
+from HeatProblem import HeatProblemLinear, HeatProblemRadial
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
-
 
 def X0_Boundary(x,y,t):
     return 50  
@@ -31,9 +30,12 @@ def main():
     dx = 1e-2
     dy = 1e-2
 
+    N, M, O = int(tmax / dt), int(xmax / dx), int(ymax / dy)
+
+    initial_conditions = 50 * np.ones((M, O))
 
     # Construct HeatProblem object using parameters
-    sample = HeatProblem(tmax, xmax, ymax, X0_Boundary, Y0_Boundary, XMax_Boundary, YMax_Boundary, dt, dx, dy)
+    sample = HeatProblemLinear(tmax, xmax, ymax, X0_Boundary, Y0_Boundary, XMax_Boundary, YMax_Boundary, initial_conditions=initial_conditions, dt=dt, dx=dx, dy=dy)
 
     # Solve using Crank-Nicolson Finite differentiation
     sample.CrankNicolson()   
@@ -52,6 +54,7 @@ def main():
 
     ax.set_xlabel("X, in Meters")
     ax.set_ylabel("Y, in Meters")
+    ax.set_xlim((0, ymax))
     fig.colorbar(frame_plot, ax=ax)
 
     time = fig.text(0.05,0.05, "Time: 0", ha="left", va="top")
